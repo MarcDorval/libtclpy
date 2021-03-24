@@ -1,7 +1,28 @@
-#include <Python.h>
-#include <tcl.h>
-#include <assert.h>
-#include <dlfcn.h>
+#define WINDOWS
+#ifndef    WINDOWS
+  #include <Python.h>
+  #include <tcl.h>
+  #include <assert.h>
+  #include <dlfcn.h>
+  #define DLL_EXPORT /* empty */
+#endif /* no-WINDOWS */
+
+#ifdef    WINDOWS
+  #include <windows.h>
+  #define PY_SSIZE_T_CLEAN
+  #include <Python.h>
+  #include <tcl.h>
+  #define DLL_EXPORT __declspec(dllexport) 
+  /* index() seems to have different definition under Windows */
+  char* _index(const char* string, char c) {
+    char *e = strchr(string, c);
+    if (e == NULL) {
+        return NULL;
+    }
+    return e;
+  }
+  #define dlopen /* empty */
+#endif /* WINDOWS */
 
 /* TCL LIBRARY BEGINS HERE */
 
@@ -249,7 +270,7 @@ PyCall_Cmd(
 	PyObject *pObjParent = NULL;
 	PyObject *pObj = pMainModule;
 	PyObject *pObjStr = NULL;
-	char *dot = index(objandfn, '.');
+	char *dot = _index(objandfn, '.');
 	while (dot != NULL) {
 		pObjParent = pObj;
 
@@ -266,7 +287,7 @@ PyCall_Cmd(
 			return PY_ERROR;
 
 		objandfn = dot + 1;
-		dot = index(objandfn, '.');
+		dot = _index(objandfn, '.');
 	}
 
 	PyObject *pFn = PyObject_GetAttrString(pObj, objandfn);
@@ -382,6 +403,26 @@ static int (*cmds[]) (
 	PyCall_Cmd, PyEval_Cmd, PyImport_Cmd
 };
 
+#ifdef    WINDOWS
+BOOL APIENTRY DllMain( HANDLE hModule,
+                       DWORD  ul_reason_for_call,
+                       LPVOID lpReserved)
+{
+	hModule    = hModule;    /* To avoid compiler warning */
+	lpReserved = lpReserved; /* To avoid compiler warning */
+	switch (ul_reason_for_call)
+	{
+		default                :
+		case DLL_PROCESS_ATTACH:
+		case DLL_THREAD_ATTACH :
+		case DLL_THREAD_DETACH :
+		case DLL_PROCESS_DETACH:
+		break;
+	}
+	return TRUE;
+};
+#endif /* WINDOWS */
+
 static int
 Py_Cmd(
 	ClientData clientData,  /* Not used. */
@@ -481,7 +522,7 @@ static ParentInterp parentInterp = NO_PARENT;
 int Tclpy_Init(Tcl_Interp *interp);
 PyObject *init_python_tclpy(Tcl_Interp* interp);
 
-int
+DLL_EXPORT int
 Tclpy_Init(Tcl_Interp *interp)
 {
 	/* TODO: all TCL_ERRORs should set an error return */
@@ -491,9 +532,9 @@ Tclpy_Init(Tcl_Interp *interp)
 	if (parentInterp == NO_PARENT)
 		parentInterp = TCL_PARENT;
 
-	if (Tcl_InitStubs(interp, "8.5", 0) == NULL)
+	if (Tcl_InitStubs(interp, "8.6", 0) == NULL)
 		return TCL_ERROR;
-	if (Tcl_PkgRequire(interp, "Tcl", "8.5", 0) == NULL)
+	if (Tcl_PkgRequire(interp, "Tcl", "8.6", 0) == NULL)
 		return TCL_ERROR;
 	if (Tcl_PkgProvide(interp, "tclpy", PACKAGE_VERSION) != TCL_OK)
 		return TCL_ERROR;
@@ -503,9 +544,11 @@ Tclpy_Init(Tcl_Interp *interp)
 	if (cmd == NULL)
 		return TCL_ERROR;
 
+#ifndef WINDOWS
 	/* Hack to fix Python C extensions not linking to libpython*.so */
 	/* http://bugs.python.org/issue4434 */
 	dlopen(PY_LIBFILE, RTLD_LAZY | RTLD_GLOBAL);
+#endif /* no-WINDOWS */
 
 	if (parentInterp != PY_PARENT) {
 		Py_Initialize(); /* void */
