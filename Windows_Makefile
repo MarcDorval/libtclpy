@@ -1,0 +1,33 @@
+PACKAGE_VERSION = 0.4
+
+TCL_INCLUDE  = $(shell tclsh  include_path.tcl)
+TCL_LIB_DIR  = $(shell tclsh  lib_path.tcl)
+TCL_LIBS     = $(TCL_LIB_DIR)\tcl86t.lib
+
+PY_VERSION = 37
+PY_LDLIBRARY=libpython$(PY_VERSION).a
+
+# "C:\Program Files (x86)\Python37-32\include"
+PY_INCLUDE  = $(shell python include_path.py )
+
+# C:\Program Files (x86)\Python37-32\libs\libpython37.a
+PY_LIB      = $(shell python lib_path.py     )\$(PY_LDLIBRARY)
+
+default: tclpy.dll
+
+# If object or library AA needs a symbol from library BB,
+# then AA should come before library BB in the command-line invocation of the linker
+# ==> the TCL libs come after our code
+tclpy.dll: tclpy.o
+	gcc -shared -v -Wl,--dll $< $(TCL_LIBS) $(PY_LIB) -luser32 -o $@
+
+tclpy.o: generic/tclpy.c
+	gcc -Wall -g -v -DPACKAGE_VERSION=\"$(PACKAGE_VERSION)\" -I$(TCL_INCLUDE) -I$(PY_INCLUDE) -c $< -o $@
+
+pkgIndex.tcl: pkgIndex.tcl.in
+	sed "s/PACKAGE_VERSION/$(PACKAGE_VERSION)/g" $< > $@
+
+clean:
+	rm -f *.dll *.o pkgIndex.tcl
+
+.PHONY: clean default
