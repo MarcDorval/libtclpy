@@ -1,13 +1,12 @@
-#define WINDOWS
-#ifndef    WINDOWS
+#ifndef    _WIN32
   #include <Python.h>
   #include <tcl.h>
   #include <assert.h>
   #include <dlfcn.h>
   #define DLL_EXPORT /* empty */
-#endif /* no-WINDOWS */
+#endif /* no-_WIN32 */
 
-#ifdef    WINDOWS
+#ifdef    _WIN32
   #include <windows.h>
   #define PY_SSIZE_T_CLEAN
   #include <Python.h>
@@ -21,8 +20,7 @@
     }
     return e;
   }
-  #define dlopen /* empty */
-#endif /* WINDOWS */
+#endif /* _WIN32 */
 
 /* TCL LIBRARY BEGINS HERE */
 
@@ -403,7 +401,7 @@ static int (*cmds[]) (
 	PyCall_Cmd, PyEval_Cmd, PyImport_Cmd
 };
 
-#ifdef    WINDOWS
+#ifdef    _WIN32
 BOOL APIENTRY DllMain( HANDLE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved)
@@ -421,7 +419,7 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 	}
 	return TRUE;
 };
-#endif /* WINDOWS */
+#endif /* _WIN32 */
 
 static int
 Py_Cmd(
@@ -544,11 +542,11 @@ Tclpy_Init(Tcl_Interp *interp)
 	if (cmd == NULL)
 		return TCL_ERROR;
 
-#ifndef WINDOWS
+#ifndef _WIN32
 	/* Hack to fix Python C extensions not linking to libpython*.so */
 	/* http://bugs.python.org/issue4434 */
 	dlopen(PY_LIBFILE, RTLD_LAZY | RTLD_GLOBAL);
-#endif /* no-WINDOWS */
+#endif /* no-_WIN32 */
 
 	if (parentInterp != PY_PARENT) {
 		Py_Initialize(); /* void */

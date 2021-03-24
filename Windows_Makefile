@@ -22,7 +22,7 @@ tclpy.dll: tclpy.o
 	gcc -shared -v -Wl,--dll $< $(TCL_LIBS) $(PY_LIB) -luser32 -o $@
 
 tclpy.o: generic/tclpy.c
-	gcc -Wall -g -v -DPACKAGE_VERSION=\"$(PACKAGE_VERSION)\" -I$(TCL_INCLUDE) -I$(PY_INCLUDE) -c $< -o $@
+	gcc -Wall -g -v -D_WIN32 -DPACKAGE_VERSION=\"$(PACKAGE_VERSION)\" -I$(TCL_INCLUDE) -I$(PY_INCLUDE) -c $< -o $@
 
 pkgIndex.tcl: pkgIndex.tcl.in
 	sed "s/PACKAGE_VERSION/$(PACKAGE_VERSION)/g" $< > $@
